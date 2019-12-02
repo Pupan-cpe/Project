@@ -1,1 +1,3 @@
-# Project
+# Project 
+# Pupan Poulkaew 
+# ComputerEngineering|NPU
