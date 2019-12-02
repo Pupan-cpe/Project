@@ -1,0 +1,538 @@
+#include <Arduino.h>
+#include <IotWebConf.h>
+
+/***************************************************
+ This is my project Pupan Phonkawe **** 
+ ****************************************************/
+#include <ESP8266WiFi.h>
+#include <Adafruit_Fingerprint.h>
+#include <ArduinoJson.h>
+const char thingName[] = "Finger";
+
+// -- Initial password to connect to the Thing, when it creates an own Access Point.
+const char wifiInitialApPassword[] = "12345678";
+
+// -- Configuration specific key. The value should be modified if config structure was changed.
+#define CONFIG_VERSION "dem1"
+
+// -- When CONFIG_PIN is pulled to ground on startup, the Thing will use the initial
+//      password to buld an AP. (E.g. in case of lost password)
+#define CONFIG_PIN D2
+
+// -- Status indicator pin.
+//      First it will light up (kept LOW), on Wifi connection it will blink,
+//      when connected to the Wifi it will turn off (kept HIGH).
+#define STATUS_PIN LED_BUILTIN
+String JsonDatascale;
+String Website, data, XML, Javascript;
+String status2;
+DNSServer dnsServer;
+WebServer server(80);
+HTTPUpdateServer httpUpdater;
+
+IotWebConf iotWebConf(thingName, &dnsServer, &server, wifiInitialApPassword, CONFIG_VERSION);
+
+// On Leonardo/Micro or others with hardware serial, use those! #0 is green wire, #1 is white
+// uncomment this line:
+// #define mySerial Serial1
+
+// For UNO and others without hardware serial, we must use software serial...
+// pin #2 is IN from sensor (GREEN wire)
+// pin #3 is OUT from arduino  (WHITE wire)
+// comment these two lines if using hardware serial
+SoftwareSerial mySerial(D3, D4);
+
+Adafruit_Fingerprint finger = Adafruit_Fingerprint(&mySerial);
+uint16_t id;
+int cnt = 0;
+String sendID;
+
+uint16_t readnumber(void)
+{
+  uint16_t num = 0;
+
+  while (num == 0)
+  {
+    while (!Serial.available())
+      ;
+    num = Serial.parseInt();
+  }
+  return num;
+}
+
+//---------------------enroll ------------------------------------
+
+uint8_t getFingerprintEnroll()
+{
+
+  int p = -1;
+  Serial.print("Waiting for valid finger to enroll as #");
+  Serial.println(id);
+  while (p != FINGERPRINT_OK)
+  {
+    p = finger.getImage();
+    switch (p)
+    {
+    case FINGERPRINT_OK:
+      Serial.println("Image taken");
+      break;
+    case FINGERPRINT_NOFINGER:
+      Serial.println(".");
+      break;
+    case FINGERPRINT_PACKETRECIEVEERR:
+      Serial.println("Communication error");
+      break;
+    case FINGERPRINT_IMAGEFAIL:
+      Serial.println("Imaging error");
+      break;
+    default:
+      Serial.println("Unknown error");
+      break;
+    }
+  }
+
+  // OK success!
+
+  p = finger.image2Tz(1);
+  switch (p)
+  {
+  case FINGERPRINT_OK:
+    Serial.println("Image converted");
+    break;
+  case FINGERPRINT_IMAGEMESS:
+    Serial.println("Image too messy");
+    return p;
+  case FINGERPRINT_PACKETRECIEVEERR:
+    Serial.println("Communication error");
+    return p;
+  case FINGERPRINT_FEATUREFAIL:
+    Serial.println("Could not find fingerprint features");
+    return p;
+  case FINGERPRINT_INVALIDIMAGE:
+    Serial.println("Could not find fingerprint features");
+    return p;
+  default:
+    Serial.println("Unknown error");
+    return p;
+  }
+
+  Serial.println("Remove finger");
+  delay(2000);
+  p = 0;
+  while (p != FINGERPRINT_NOFINGER)
+  {
+    p = finger.getImage();
+  }
+  Serial.print("ID ");
+  Serial.println(id);
+  p = -1;
+  Serial.println("Place same finger again");
+  while (p != FINGERPRINT_OK)
+  {
+    p = finger.getImage();
+    switch (p)
+    {
+    case FINGERPRINT_OK:
+      Serial.println("Image taken");
+      break;
+    case FINGERPRINT_NOFINGER:
+      Serial.print(".");
+      break;
+    case FINGERPRINT_PACKETRECIEVEERR:
+      Serial.println("Communication error");
+      break;
+    case FINGERPRINT_IMAGEFAIL:
+      Serial.println("Imaging error");
+      break;
+    default:
+      Serial.println("Unknown error");
+      break;
+    }
+  }
+
+  // OK success!
+
+  p = finger.image2Tz(2);
+  switch (p)
+  {
+  case FINGERPRINT_OK:
+    Serial.println("Image converted");
+    break;
+  case FINGERPRINT_IMAGEMESS:
+    Serial.println("Image too messy");
+    return p;
+  case FINGERPRINT_PACKETRECIEVEERR:
+    Serial.println("Communication error");
+    return p;
+  case FINGERPRINT_FEATUREFAIL:
+    Serial.println("Could not find fingerprint features");
+    return p;
+  case FINGERPRINT_INVALIDIMAGE:
+    Serial.println("Could not find fingerprint features");
+    return p;
+  default:
+    Serial.println("Unknown error");
+    return p;
+  }
+
+  // OK converted!
+  Serial.print("Creating model for #");
+  Serial.println(id);
+
+  p = finger.createModel();
+  if (p == FINGERPRINT_OK)
+  {
+    Serial.println("Prints matched!");
+  }
+  else if (p == FINGERPRINT_PACKETRECIEVEERR)
+  {
+    Serial.println("Communication error");
+    return p;
+  }
+  else if (p == FINGERPRINT_ENROLLMISMATCH)
+  {
+    Serial.println("Fingerprints did not match");
+    return p;
+  }
+  else
+  {
+    Serial.println("Unknown error");
+    return p;
+  }
+
+  Serial.print("ID ");
+  Serial.println(id);
+  p = finger.storeModel(id);
+  if (p == FINGERPRINT_OK)
+  {
+    Serial.println("Stored!");
+  }
+  else if (p == FINGERPRINT_PACKETRECIEVEERR)
+  {
+    Serial.println("Communication error");
+    return p;
+  }
+  else if (p == FINGERPRINT_BADLOCATION)
+  {
+    Serial.println("Could not store in that location");
+    return p;
+  }
+  else if (p == FINGERPRINT_FLASHERR)
+  {
+    Serial.println("Error writing to flash");
+    return p;
+  }
+  else
+  {
+    Serial.println("Unknown error");
+    return p;
+  }
+}
+
+//Read fingerprints------------------------------------------------------------------
+
+uint8_t getFingerprintID()
+{
+  uint8_t p = finger.getImage();
+  switch (p)
+  {
+  case FINGERPRINT_OK:
+    Serial.println("Image taken");
+    break;
+  case FINGERPRINT_NOFINGER:
+    Serial.println("No finger detected");
+    return p;
+  case FINGERPRINT_PACKETRECIEVEERR:
+    Serial.println("Communication error");
+    return p;
+  case FINGERPRINT_IMAGEFAIL:
+    Serial.println("Imaging error");
+    return p;
+  default:
+    Serial.println("Unknown error");
+    return p;
+  }
+
+  // OK success!
+
+  p = finger.image2Tz();
+  switch (p)
+  {
+  case FINGERPRINT_OK:
+    Serial.println("Image converted");
+    break;
+  case FINGERPRINT_IMAGEMESS:
+    Serial.println("Image too messy");
+    return p;
+  case FINGERPRINT_PACKETRECIEVEERR:
+    Serial.println("Communication error");
+    return p;
+  case FINGERPRINT_FEATUREFAIL:
+    Serial.println("Could not find fingerprint features");
+    return p;
+  case FINGERPRINT_INVALIDIMAGE:
+    Serial.println("Could not find fingerprint features");
+    return p;
+  default:
+    Serial.println("Unknown error");
+    return p;
+  }
+
+  // OK converted!
+  p = finger.fingerFastSearch();
+  if (p == FINGERPRINT_OK)
+  {
+    Serial.println("Found a print match!");
+  }
+  else if (p == FINGERPRINT_PACKETRECIEVEERR)
+  {
+    Serial.println("Communication error");
+    return p;
+  }
+  else if (p == FINGERPRINT_NOTFOUND)
+  {
+    Serial.println("Did not find a match");
+    return p;
+  }
+  else
+  {
+    Serial.println("Unknown error");
+    return p;
+  }
+
+  // found a match!
+  Serial.print("Found ID #");
+  Serial.print(finger.fingerID);
+  Serial.print(" with confidence of ");
+  Serial.println(finger.confidence);
+
+  return finger.fingerID;
+}
+
+// returns -1 if failed, otherwise returns ID #
+int getFingerprintIDez()
+{
+  uint8_t p = finger.getImage();
+  if (p != FINGERPRINT_OK)
+    return -1;
+
+  p = finger.image2Tz();
+  if (p != FINGERPRINT_OK)
+    return -1;
+
+  p = finger.fingerFastSearch();
+  if (p != FINGERPRINT_OK)
+    return -1;
+
+  // found a match!
+  Serial.print("Found ID #");
+  Serial.print(finger.fingerID);
+  Serial.print(" with confidence of ");
+  Serial.println(finger.confidence);
+  return finger.fingerID;
+}
+
+void read1()
+{
+
+  //++;
+
+  Serial.println("Ready to Read a fingerprint!");
+  // id = getFingerprintIDez(); // check the sensors // wait for sensors to stabilize
+  // getFingerprintIDez();
+  getFingerprintIDez();
+  if (id == 0)
+  { // ID #0 not allowed, try again!
+    return;
+  }
+  id = finger.fingerID;
+
+  do
+  {
+    cnt++;
+    getFingerprintIDez();
+    Serial.println(id);
+    Serial.println(cnt);
+
+    if (cnt == 80)
+    {
+      cnt = 0;
+      break;
+    }
+
+  } while (id == 65535);
+  Serial.println("okpass");
+
+
+}
+
+void wirte1()
+{
+
+  {
+    Serial.println("Ready to enroll a fingerprint!");
+id = readnumber();
+    // Serial.println("Please type in the ID # (from 1 to 127) you want to save this finger as...");
+   
+  {
+  Serial.println("Ready to enroll a fingerprint!");
+ // Serial.println("Please type in the ID # (from 1 to 127) you want to save this finger as...");
+ // id = "";  // แกเตรงนี้ 
+  if (id == 0) {// ID #0 not allowed, try again!
+     return;
+  }
+  Serial.print("Enrolling ID #");
+  Serial.println(id);
+  
+  while (!  getFingerprintEnroll() );
+}
+}
+}
+
+void javascriptContent()
+{
+  Javascript = "<SCRIPT>\n";
+  Javascript += "var xmlHttp=createXmlHttpObject();\n";
+  Javascript += "function createXmlHttpObject(){\n";
+  Javascript += "if(window.XMLHttpRequest){\n";
+  Javascript += "xmlHttp=new XMLHttpRequest();\n";
+  Javascript += "}else{\n";
+  Javascript += "xmlHttp=new ActiveXObject('Microsoft.XMLHTTP');\n";
+  Javascript += "}\n";
+  Javascript += "return xmlHttp;\n";
+  Javascript += "}\n";
+  Javascript += "\n";
+  Javascript += "function response(){\n";
+  Javascript += "xmlResponse=xmlHttp.responseXML;\n";
+  Javascript += "xmldoc = xmlResponse.getElementsByTagName('data');\n";
+  Javascript += "message = xmldoc[0].firstChild.nodeValue;\n";
+  Javascript += "document.getElementById('div1').innerHTML=message;\n";
+  Javascript += "}\n";
+  Javascript += "function process(){\n";
+  Javascript += "xmlHttp.open('PUT','xml',true);\n";
+  Javascript += "xmlHttp.onreadystatechange=response;\n";
+  Javascript += "xmlHttp.send(null);\n";
+  Javascript += "setTimeout('process()',200);\n";
+  Javascript += "}\n";
+  //server.send(200, "text/html", JsonData);
+  Javascript += "</SCRIPT>\n";
+}
+void WebsiteContent()
+{
+  //  javascriptContent();
+  //  Website = "Access-Control-Allow-Origin: *";
+  //  Website +="Access-Control-Allow-Methods: POST";
+  //  Website += JsonDatascale;
+
+  //  Website += "<style>\n";
+  //  Website += "#div1{\n";
+  //  Website += "width:500px;\n";
+  //  Website += "margin:0 auto;\n";
+  //  Website += "margin-top:130px;\n";
+  //  Website += "font-size:100%;\n";
+  //  Website += "color:#000100;\n";
+  //  Website += "}\n";
+  //  Website += "</style>\n";
+  //  Website += "<body onload='process()'>";
+  //  Website += "<div id='div1'>" + JsonDatascale + "</div></body></html>";
+  //  Website += Javascript;
+  server.sendHeader("access-control-allow-origin", "*");
+  server.send(200, "text/plain", "example");
+}
+
+void XMLcontent()
+{
+
+  XML = "<?xml version='1.0'?>";
+  XML += "<data>";
+  XML += "JsonDatascale";
+  XML += "</data>";
+
+  server.send(200, "text/xml", XML);
+}
+
+void handleRoot2()
+{
+  // -- Let IotWebConf test and handle captive portal requests.
+  if (iotWebConf.handleCaptivePortal())
+  {
+    // -- Captive portal request were already served.
+    return;
+  }
+  String s = "<!DOCTYPE html><html lang=\"en\"><head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1, user-scalable=no\"/>";
+  s += "<title>IotWebConf 04 Update Server</title></head><body>Hello world!";
+  s += "Go to <a href='config'>configure page</a> to change values.";
+  s += "</body></html>\n";
+
+  server.send(200, "text/html", s);
+}
+
+void handleRoot()
+{
+  String message;
+
+
+  if (server.arg("id").toInt())
+  {
+   
+    wirte1();
+  
+  }
+
+  if (server.arg("test").toInt())
+  {
+    Serial.println("eeee");
+  }
+
+  server.send(200, "text/html", "success");
+}
+void setup()
+{
+  Serial.begin(115200);
+  finger.begin(57600);
+
+  iotWebConf.setStatusPin(STATUS_PIN);
+  iotWebConf.setConfigPin(CONFIG_PIN);
+  iotWebConf.setupUpdateServer(&httpUpdater);
+  iotWebConf.getApTimeoutParameter()->visible = true;
+  // iotWebConf.setWifiConnectionTimeoutMs(&httpUpdater);
+  // -- Initializing the configuration.
+  iotWebConf.init();
+
+  // -- Set up required URL handlers on the web server.
+  server.on("/iotweb", handleRoot2);
+  server.on("/config", [] { iotWebConf.handleConfig(); });
+  server.onNotFound([]() { iotWebConf.handleNotFound(); });
+  server.on("/readID", read1);
+  server.on("/", handleRoot);
+  Serial.println("Ready.");
+
+  // set the data rate for the sensor serial port
+
+  // if (finger.verifyPassword())
+  // {
+  //   Serial.println("Found fingerprint sensor!");
+  // }
+  // else
+  // {
+  //   Serial.println("Did not find fingerprint sensor :(");
+  //   while (1)
+  //   {
+  //     delay(1);
+  //   }
+  // }
+
+  // finger.getTemplateCount();
+  // Serial.print("Sensor contains ");
+  // Serial.print(finger.templateCount);
+  // Serial.println(" templates");
+  // Serial.println("Waiting for valid finger...");
+}
+
+void loop() // run over and over again
+{
+  iotWebConf.doLoop();
+  server.handleClient();
+  // read1();
+  //  getFingerprintIDez();
+}
