@@ -8,7 +8,8 @@
 #include <Adafruit_Fingerprint.h>
 #include <ArduinoJson.h>
 const char thingName[] = "Finger";
-
+int FingerID;
+String send;
 // -- Initial password to connect to the Thing, when it creates an own Access Point.
 const char wifiInitialApPassword[] = "12345678";
 
@@ -29,7 +30,7 @@ String status2;
 DNSServer dnsServer;
 WebServer server(80);
 HTTPUpdateServer httpUpdater;
-
+String enrollID;
 IotWebConf iotWebConf(thingName, &dnsServer, &server, wifiInitialApPassword, CONFIG_VERSION);
 
 // On Leonardo/Micro or others with hardware serial, use those! #0 is green wire, #1 is white
@@ -47,22 +48,22 @@ uint16_t id;
 int cnt = 0;
 String sendID;
 
-uint16_t readnumber(void)
-{
-  uint16_t num = 0;
+// uint16_t readnumber(void)
+// {
+//   uint16_t num = 0;
 
-  while (num == 0)
-  {
-    while (!Serial.available())
-      ;
-    num = Serial.parseInt();
-  }
-  return num;
-}
+//   while (num == 0)
+//   {
+//     while (!Serial.available())
+//       ;
+//     num = Serial.parseInt();
+//   }
+//   return num;
+// }
 
 //---------------------enroll ------------------------------------
 
-uint8_t getFingerprintEnroll()
+uint16_t getFingerprintEnroll()
 {
 
   int p = -1;
@@ -78,7 +79,10 @@ uint8_t getFingerprintEnroll()
       break;
     case FINGERPRINT_NOFINGER:
       Serial.println(".");
+      Serial.println("Scan now #1");
+      status2 ="Scan now #1";
       break;
+
     case FINGERPRINT_PACKETRECIEVEERR:
       Serial.println("Communication error");
       break;
@@ -137,6 +141,7 @@ uint8_t getFingerprintEnroll()
       break;
     case FINGERPRINT_NOFINGER:
       Serial.print(".");
+      Serial.println("Scan now #2");
       break;
     case FINGERPRINT_PACKETRECIEVEERR:
       Serial.println("Communication error");
@@ -192,6 +197,7 @@ uint8_t getFingerprintEnroll()
   else if (p == FINGERPRINT_ENROLLMISMATCH)
   {
     Serial.println("Fingerprints did not match");
+    status2 = "Fingerprints did not match";
     return p;
   }
   else
@@ -206,6 +212,7 @@ uint8_t getFingerprintEnroll()
   if (p == FINGERPRINT_OK)
   {
     Serial.println("Stored!");
+    status2 = "success!";
   }
   else if (p == FINGERPRINT_PACKETRECIEVEERR)
   {
@@ -228,7 +235,6 @@ uint8_t getFingerprintEnroll()
     return p;
   }
 }
-
 //Read fingerprints------------------------------------------------------------------
 
 uint8_t getFingerprintID()
@@ -312,7 +318,7 @@ uint8_t getFingerprintID()
 // returns -1 if failed, otherwise returns ID #
 int getFingerprintIDez()
 {
-  uint8_t p = finger.getImage();
+  uint16_t p = finger.getImage();
   if (p != FINGERPRINT_OK)
     return -1;
 
@@ -335,58 +341,110 @@ int getFingerprintIDez()
 void read1()
 {
 
-  //++;
+  Serial.println("Ready to read a fingerprint!");
 
-  Serial.println("Ready to Read a fingerprint!");
-  // id = getFingerprintIDez(); // check the sensors // wait for sensors to stabilize
-  // getFingerprintIDez();
-  getFingerprintIDez();
-  if (id == 0)
-  { // ID #0 not allowed, try again!
-    return;
-  }
-  id = finger.fingerID;
+  FingerID = -1;
+  //id =-1;
 
-  do
+  // do
+  // {
+
+  //   cnt++;
+
+  //     id = getFingerprintIDez();
+  //     Serial.println("Scan NOW");
+  //     Serial.println(cnt);
+  // } while (cnt == 80);
+  //break;
+
+  // while (id == )
+  // {
+  //   FingerID=getFingerprintIDez();
+  //   cnt++;
+  //   Serial.println(cnt);
+
+  // }
+
+  while (FingerID == -1)
   {
     cnt++;
-    getFingerprintIDez();
-    Serial.println(id);
+
+    FingerID = getFingerprintIDez();
+    Serial.println("Scan NOW");
     Serial.println(cnt);
 
-    if (cnt == 80)
+    if (cnt == 30)
     {
-      cnt = 0;
       break;
     }
 
-  } while (id == 65535);
-  Serial.println("okpass");
+  } //---------ใช้ได้
 
+  //  DynamicJsonDocument  root(100);
 
+  // root["Scale"] = String(FingerID);
+
+  // serializeJson(root, JsonDatascale);
+  // Serial.println(JsonDatascale);
+
+  // } while (cnt == 65535);
+  // if (id == 65535)
+  // {
+  //   cnt = 0;
+  //   Serial.println("Time out");
+  // }
+  cnt = 0;
+  sendID = "";
+  DynamicJsonDocument root(100);
+
+  root["id"] = String(FingerID);
+
+  serializeJson(root, sendID);
+  Serial.println(sendID);
+  if (FingerID == -1)
+  {
+    server.send(200, "text/html", String("Time out"));
+  }
+  else
+  {
+    server.send(200, "text/html", String(sendID));
+  }
+
+  //++;
+
+  //Serial.println("Ready to Read a fingerprint!");
+  // id = getFingerprintIDez(); // check the sensors // wait for sensors to stabilize
+  // getFingerprintIDez();
+  // getFingerprintIDez();
+
+  // }
+  // id = finger.fingerID;
+
+  // do
+  // {
+  //   cnt++;
+  //   getFingerprintIDez();
+  //   Serial.println(id);
+  //   Serial.println(cnt);
+
+  //   if (cnt == 80)
+  //   {
+  //     cnt = 0;
+  //     break;
+  //   }
+
+  // } while (id == 65535);
+  // Serial.println("okpass");
 }
 
 void wirte1()
 {
 
-  {
-    Serial.println("Ready to enroll a fingerprint!");
-id = readnumber();
-    // Serial.println("Please type in the ID # (from 1 to 127) you want to save this finger as...");
-   
-  {
-  Serial.println("Ready to enroll a fingerprint!");
- // Serial.println("Please type in the ID # (from 1 to 127) you want to save this finger as...");
- // id = "";  // แกเตรงนี้ 
-  if (id == 0) {// ID #0 not allowed, try again!
-     return;
-  }
-  Serial.print("Enrolling ID #");
-  Serial.println(id);
-  
-  while (!  getFingerprintEnroll() );
-}
-}
+  Serial.println("StartRegister ");
+
+  getFingerprintEnroll();
+
+
 }
 
 void javascriptContent()
@@ -466,17 +524,18 @@ void handleRoot2()
 
   server.send(200, "text/html", s);
 }
-
+void handle_NotFound()
+{
+  server.send(404, "text/plain", "----------------Not found----------");
+}
 void handleRoot()
 {
   String message;
 
-
   if (server.arg("id").toInt())
   {
-   
+    id = server.arg("id").toInt();
     wirte1();
-  
   }
 
   if (server.arg("test").toInt())
@@ -484,7 +543,7 @@ void handleRoot()
     Serial.println("eeee");
   }
 
-  server.send(200, "text/html", "success");
+  server.send(200, "text/html",status2 );
 }
 void setup()
 {
@@ -505,6 +564,7 @@ void setup()
   server.onNotFound([]() { iotWebConf.handleNotFound(); });
   server.on("/readID", read1);
   server.on("/", handleRoot);
+  server.onNotFound(handle_NotFound);
   Serial.println("Ready.");
 
   // set the data rate for the sensor serial port
@@ -531,6 +591,7 @@ void setup()
 
 void loop() // run over and over again
 {
+  // getFingerprintIDez();
   iotWebConf.doLoop();
   server.handleClient();
   // read1();
