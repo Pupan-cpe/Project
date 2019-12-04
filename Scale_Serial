@@ -1,8 +1,12 @@
 
 
-/***************************************************
- This is my project Pupan Phonkaew **** 
- ****************************************************/
+/*****************************************************************************************
+  #Design and development factory of recycling management through the internet of thing
+
+  #ComputerEngineering Faculty OF Engineering NakhonPhanomUniversity 
+  
+  #Pupan Phonkaew 593030710044
+ *****************************************************************************************/
 #include <Arduino.h>
 #include <SoftwareSerial.h>
 #include <IotWebConf.h>
