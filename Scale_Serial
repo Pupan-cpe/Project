@@ -1,15 +1,90 @@
+
+
+/***************************************************
+ This is my project Pupan Phonkaew **** 
+ ****************************************************/
 #include <Arduino.h>
-
 #include <SoftwareSerial.h>
+#include <IotWebConf.h>
+#include <ESP8266WiFi.h>
+#include <ArduinoJson.h>
 
-SoftwareSerial swSer(D1, D2, false, 128); //Define hardware connections
+#define CONFIG_VERSION "dem1"
+// -- When CONFIG_PIN is pulled to ground on startup, the Thing will use the initial
+//      password to buld an AP. (E.g. in case of lost password)
+#define CONFIG_PIN D2
+// -- Status indicator pin.
+//      First it will light up (kept LOW), on Wifi connection it will blink,
+//      when connected to the Wifi it will turn off (kept HIGH).
+#define STATUS_PIN LED_BUILTIN
+const char thingName[] = "scale";
+const char wifiInitialApPassword[] = "12345678";
+
+DNSServer dnsServer;
+WebServer server(80);
+HTTPUpdateServer httpUpdater;
+String enrollID;
+IotWebConf iotWebConf(thingName, &dnsServer, &server, wifiInitialApPassword, CONFIG_VERSION);
+SoftwareSerial swSer(D1, D2, false, 128);
 String rs232input1;
+String Website, data, Javascript;
+
+void javascriptContent()
+{
+  Javascript = "<SCRIPT>\n";
+  Javascript += "var xmlHttp=createXmlHttpObject();\n";
+  Javascript += "function createXmlHttpObject(){\n";
+  Javascript += "if(window.XMLHttpRequest){\n";
+  Javascript += "xmlHttp=new XMLHttpRequest();\n";
+  Javascript += "}else{\n";
+  Javascript += "xmlHttp=new ActiveXObject('Microsoft.XMLHTTP');\n";
+  Javascript += "}\n";
+  Javascript += "return xmlHttp;\n";
+  Javascript += "}\n";
+  Javascript += "\n";
+  Javascript += "function response(){\n";
+  Javascript += "xmlResponse=xmlHttp.responseXML;\n";
+  Javascript += "xmldoc = xmlResponse.getElementsByTagName('data');\n";
+  Javascript += "message = xmldoc[0].firstChild.nodeValue;\n";
+  Javascript += "document.getElementById('div1').innerHTML=message;\n";
+  Javascript += "}\n";
+  Javascript += "function process(){\n";
+  Javascript += "xmlHttp.open('PUT','xml',true);\n";
+  Javascript += "xmlHttp.onreadystatechange=response;\n";
+  Javascript += "xmlHttp.send(null);\n";
+  Javascript += "setTimeout('process()',200);\n";
+  Javascript += "}\n";
+  //server.send(200, "text/html", JsonData);
+  Javascript += "</SCRIPT>\n";
+}
+void handle_NotFound()
+{
+  server.send(404, "text/plain", "Cannot enter because it is not an administrator.");
+}
+void WebsiteContent()
+{
+
+  server.sendHeader("access-control-allow-origin", "*");
+  server.send(200, "text/html", data);
+}
+
 void setup()
 {
-  Serial.begin(115200); //Initialize hardware serial with baudrate of 115200
-  swSer.begin(9600);    //Initialize software serial with baudrate of 115200
+  Serial.begin(115200);
+  swSer.begin(9600);
+
+  iotWebConf.setStatusPin(STATUS_PIN);
+  iotWebConf.setConfigPin(CONFIG_PIN);
+  iotWebConf.setupUpdateServer(&httpUpdater);
+  iotWebConf.getApTimeoutParameter()->visible = true;
+  // iotWebConf.setWifiConnectionTimeoutMs(&httpUpdater);
+  // -- Initializing the configuration.
+  iotWebConf.init();
 
   Serial.println("\nSoftware serial test started");
+  server.on("/getscale", WebsiteContent);
+  server.onNotFound(handle_NotFound);
+  Serial.println("HTTP server started");
 
   for (char ch = ' '; ch <= 'z'; ch++)
   { //send serially a to z on software serial
@@ -20,6 +95,8 @@ void setup()
 
 void loop()
 {
+  iotWebConf.doLoop();
+  server.handleClient();
 
   if (swSer.available() > 0)
   {
@@ -29,18 +106,10 @@ void loop()
     int endindex = rs232input1.indexOf('(');
     rs232input1 = rs232input1.substring(strindex + 1, endindex);
     Serial.println(rs232input1);
-    //swSer.write(Serial.read());
-    
   }
+  DynamicJsonDocument root(100);
+  root["scale weight"] = String(rs232input1);
+  serializeJson(root, data);
 
-  // while (swSer.available() > 0)
-  // {
-  //   Serial.write(swSer.read());
-  //   yield();
-  // }
-  // while (Serial.available() > 0)
-  // {
-  //   swSer.write(Serial.read());
-  //   yield();
-  // }
+  // Serial.println(JsonDatascale);
 }
