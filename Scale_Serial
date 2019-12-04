@@ -8,6 +8,8 @@
 #include <IotWebConf.h>
 #include <ESP8266WiFi.h>
 #include <ArduinoJson.h>
+#include <BlynkSimpleEsp8266.h>
+BlynkTimer timer;
 
 #define CONFIG_VERSION "dem1"
 // -- When CONFIG_PIN is pulled to ground on startup, the Thing will use the initial
@@ -59,13 +61,28 @@ void javascriptContent()
 }
 void handle_NotFound()
 {
-  server.send(404, "text/plain", "Cannot enter because it is not an administrator.");
+  server.send(404, "text/plain", "404 Not found.");
 }
 void WebsiteContent()
 {
 
   server.sendHeader("access-control-allow-origin", "*");
   server.send(200, "text/html", data);
+}
+void handleRoot2()
+{
+  // -- Let IotWebConf test and handle captive portal requests.
+  if (iotWebConf.handleCaptivePortal())
+  {
+    // -- Captive portal request were already served.
+    return;
+  }
+  String s = "<!DOCTYPE html><html lang=\"en\"><head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1, user-scalable=no\"/>";
+  s += "<title>IotWebConf 04 Update Server</title></head><body>Hello world!";
+  s += "Go to <a href='config'>configure page</a> to change values.";
+  s += "</body></html>\n";
+
+  server.send(200, "text/html", s);
 }
 
 void setup()
@@ -80,14 +97,16 @@ void setup()
   // iotWebConf.setWifiConnectionTimeoutMs(&httpUpdater);
   // -- Initializing the configuration.
   iotWebConf.init();
-
+  //timer.setInterval(300L, WebsiteContent);
   Serial.println("\nSoftware serial test started");
   server.on("/getscale", WebsiteContent);
+  server.on("/config", [] { iotWebConf.handleConfig(); });
+
   server.onNotFound(handle_NotFound);
   Serial.println("HTTP server started");
 
   for (char ch = ' '; ch <= 'z'; ch++)
-  { //send serially a to z on software serial
+  { //send serially a to z on so ftware serial
     swSer.write(ch);
   }
   swSer.println("");
@@ -97,7 +116,8 @@ void loop()
 {
   iotWebConf.doLoop();
   server.handleClient();
-
+  data = "";
+  timer.run();
   if (swSer.available() > 0)
   {
     rs232input1 = swSer.readStringUntil('\n');
@@ -105,11 +125,11 @@ void loop()
     int strindex = rs232input1.indexOf('=');
     int endindex = rs232input1.indexOf('(');
     rs232input1 = rs232input1.substring(strindex + 1, endindex);
-    Serial.println(rs232input1);
+    DynamicJsonDocument root(100);
+    root["scale"] = String(rs232input1);
+    serializeJson(root, data);
+    // Serial.println(rs232input1);
   }
-  DynamicJsonDocument root(100);
-  root["scale weight"] = String(rs232input1);
-  serializeJson(root, data);
 
   // Serial.println(JsonDatascale);
 }
