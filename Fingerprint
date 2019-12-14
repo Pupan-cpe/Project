@@ -2,14 +2,19 @@
 #include <IotWebConf.h>
 
 /***************************************************
- This is my project Pupan Phonkawe **** 
+ This is my project 
+ Pupan Phonkaew | 593030710044
+ Computer Engineering |Faculty of Engingeering NakhonPhanom University
+ 
  ****************************************************/
 #include <ESP8266WiFi.h>
 #include <Adafruit_Fingerprint.h>
 #include <ArduinoJson.h>
 const char thingName[] = "Finger";
 int FingerID;
+int cnt1;
 String send;
+String timeout, timeout1;
 // -- Initial password to connect to the Thing, when it creates an own Access Point.
 const char wifiInitialApPassword[] = "12345678";
 
@@ -26,7 +31,7 @@ const char wifiInitialApPassword[] = "12345678";
 #define STATUS_PIN LED_BUILTIN
 String JsonDatascale;
 String Website, data, XML, Javascript;
-String status2;
+String status2, status;
 DNSServer dnsServer;
 WebServer server(80);
 HTTPUpdateServer httpUpdater;
@@ -65,7 +70,7 @@ String sendID;
 
 uint16_t getFingerprintEnroll()
 {
-
+  cnt1 = 0;
   int p = -1;
   Serial.print("Waiting for valid finger to enroll as #");
   Serial.println(id);
@@ -78,9 +83,17 @@ uint16_t getFingerprintEnroll()
       Serial.println("Image taken");
       break;
     case FINGERPRINT_NOFINGER:
+      cnt1++;
       Serial.println(".");
+      Serial.println(cnt1);
       Serial.println("Scan now #1");
-      status2 ="Scan now #1";
+      if (cnt1 == 20)
+      {
+        Serial.println("Time out");
+        status2 = "Time Out";
+        return p;
+      }
+
       break;
 
     case FINGERPRINT_PACKETRECIEVEERR:
@@ -198,6 +211,7 @@ uint16_t getFingerprintEnroll()
   {
     Serial.println("Fingerprints did not match");
     status2 = "Fingerprints did not match";
+    cnt1 = 0;
     return p;
   }
   else
@@ -213,6 +227,7 @@ uint16_t getFingerprintEnroll()
   {
     Serial.println("Stored!");
     status2 = "success!";
+    cnt1 = 0;
   }
   else if (p == FINGERPRINT_PACKETRECIEVEERR)
   {
@@ -235,6 +250,7 @@ uint16_t getFingerprintEnroll()
     return p;
   }
 }
+
 //Read fingerprints------------------------------------------------------------------
 
 uint8_t getFingerprintID()
@@ -395,15 +411,21 @@ void read1()
   // }
   cnt = 0;
   sendID = "";
+
   DynamicJsonDocument root(100);
-
   root["id"] = String(FingerID);
-
   serializeJson(root, sendID);
   Serial.println(sendID);
+
   if (FingerID == -1)
   {
-    server.send(200, "text/html", String("Time out"));
+    timeout1="";
+    timeout = "Time Out";
+    DynamicJsonDocument root(100);
+    root["id"] = String(timeout);
+    serializeJson(root, timeout1);
+    Serial.print("Read ID => Time OUT");
+    server.send(200, "text/html", String(timeout1));
   }
   else
   {
@@ -443,8 +465,6 @@ void wirte1()
   Serial.println("StartRegister ");
 
   getFingerprintEnroll();
-
-
 }
 
 void javascriptContent()
@@ -530,6 +550,7 @@ void handle_NotFound()
 }
 void handleRoot()
 {
+  status = "";
   String message;
 
   if (server.arg("id").toInt())
@@ -538,12 +559,12 @@ void handleRoot()
     wirte1();
   }
 
-  if (server.arg("test").toInt())
-  {
-    Serial.println("eeee");
-  }
+  DynamicJsonDocument root(100);
 
-  server.send(200, "text/html",status2 );
+  root["id"] = String(status2);
+
+  serializeJson(root, status);
+  server.send(200, "text/html", status);
 }
 void setup()
 {
