@@ -13,16 +13,15 @@
 #include <ESP8266WiFi.h>
 #include <ArduinoJson.h>
 #include <BlynkSimpleEsp8266.h>
-BlynkTimer timer;
 
 #define CONFIG_VERSION "dem1"
 // -- When CONFIG_PIN is pulled to ground on startup, the Thing will use the initial
 //      password to buld an AP. (E.g. in case of lost password)
-#define CONFIG_PIN D2
+//#define CONFIG_PIN D2
 // -- Status indicator pin.
 //      First it will light up (kept LOW), on Wifi connection it will blink,
 //      when connected to the Wifi it will turn off (kept HIGH).
-#define STATUS_PIN LED_BUILTIN
+//#define STATUS_PIN LED_BUILTIN
 const char thingName[] = "scale";
 const char wifiInitialApPassword[] = "12345678";
 
@@ -34,11 +33,30 @@ IotWebConf iotWebConf(thingName, &dnsServer, &server, wifiInitialApPassword, CON
 SoftwareSerial swSer(D1, D2);
 String rs232input1;
 String Website, data, Javascript;
+BlynkTimer timer;
 
+int RGBPin[] = {D5, D4, D3};
 
-void setWifiConnectionTimeoutMs(){
+void SetRGB(int r, int g, int b)
+{
+  analogWrite(RGBPin[0], r);
+  analogWrite(RGBPin[1], g);
+  analogWrite(RGBPin[2], b);
+}
+
+void setWifiConnectionTimeoutMs()
+{
   if (WiFi.status() != WL_CONNECTED)
- Serial.println("Wifi Disconnect"); 
+  {
+    
+    Serial.println("Wifi Disconnect");
+    SetRGB(255, 0, 0); // Red
+  }
+  else
+  {
+    Serial.println("WifiConnected");
+    SetRGB(0, 255, 255); // Green
+  }
 }
 
 void javascriptContent()
@@ -75,11 +93,16 @@ void handle_NotFound()
 }
 void WebsiteContent()
 {
-if (data == "")
-{
-  Serial.println("Unable to contact the scale");
-  data = "Unable to contact the scale";
-}
+  if (data == "")
+  {
+    Serial.println("Unable to contact the scale");
+    SetRGB(255, 0, 0);
+    data = "Unable to contact the scale";
+  }
+  else
+  {
+    SetRGB(0, 255, 0);
+  }
 
   server.sendHeader("access-control-allow-origin", "*");
   server.send(200, "text/html", data);
@@ -104,10 +127,13 @@ void setup()
 {
   Serial.begin(115200);
   swSer.begin(9600);
+  pinMode(RGBPin[0], OUTPUT);
+  pinMode(RGBPin[1], OUTPUT);
+  pinMode(RGBPin[2], OUTPUT);
 
-
-  iotWebConf.setStatusPin(STATUS_PIN);
-  iotWebConf.setConfigPin(CONFIG_PIN);
+  timer.setInterval(300L, setWifiConnectionTimeoutMs);
+  // iotWebConf.setStatusPin(STATUS_PIN);
+  // iotWebConf.setConfigPin(CONFIG_PIN);
   iotWebConf.setupUpdateServer(&httpUpdater);
   iotWebConf.getApTimeoutParameter()->visible = true;
   // iotWebConf.setWifiConnectionTimeoutMs(&httpUpdater);
@@ -132,6 +158,7 @@ void loop()
 {
   iotWebConf.doLoop();
   server.handleClient();
+  timer.run();
   data = "";
   timer.run();
   if (swSer.available() > 0)
@@ -144,7 +171,7 @@ void loop()
     DynamicJsonDocument root(100);
     root["scale"] = String(rs232input1);
     serializeJson(root, data);
-    Serial.println(data);
+ Serial.println(data);
   }
 
   // Serial.println(JsonDatascale);
