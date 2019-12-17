@@ -32,7 +32,7 @@ String enrollID;
 IotWebConf iotWebConf(thingName, &dnsServer, &server, wifiInitialApPassword, CONFIG_VERSION);
 SoftwareSerial swSer(D1, D2);
 String rs232input1;
-String Website, data, Javascript;
+String Website, data, Javascript,XML;
 BlynkTimer timer;
 
 int RGBPin[] = {D5, D4, D3};
@@ -48,7 +48,7 @@ void setWifiConnectionTimeoutMs()
 {
   if (WiFi.status() != WL_CONNECTED)
   {
-    
+
     Serial.println("Wifi Disconnect");
     SetRGB(255, 0, 0); // Red
   }
@@ -58,7 +58,16 @@ void setWifiConnectionTimeoutMs()
     SetRGB(0, 255, 255); // Green
   }
 }
+void XMLcontent()
+{
 
+  XML = "<?xml version='1.0'?>";
+  XML += "<data>";
+  XML += data;
+  XML += "</data>";
+
+  server.send(200, "text/xml", XML);
+}
 void javascriptContent()
 {
   Javascript = "<SCRIPT>\n";
@@ -84,9 +93,10 @@ void javascriptContent()
   Javascript += "xmlHttp.send(null);\n";
   Javascript += "setTimeout('process()',200);\n";
   Javascript += "}\n";
-  //server.send(200, "text/html", JsonData);
+  server.send(200, "text/html", data);
   Javascript += "</SCRIPT>\n";
 }
+
 void handle_NotFound()
 {
   server.send(404, "text/plain", "404 Not found.");
@@ -142,8 +152,9 @@ void setup()
   //timer.setInterval(300L, WebsiteContent);
   Serial.println("\nSoftware serial test started");
   server.on("/getscale", WebsiteContent);
+  // server.on("/", );
   server.on("/config", [] { iotWebConf.handleConfig(); });
-
+  server.on("/xml", XMLcontent);
   server.onNotFound(handle_NotFound);
   Serial.println("HTTP server started");
 
@@ -171,7 +182,7 @@ void loop()
     DynamicJsonDocument root(100);
     root["scale"] = String(rs232input1);
     serializeJson(root, data);
- Serial.println(data);
+    Serial.println(data);
   }
 
   // Serial.println(JsonDatascale);
