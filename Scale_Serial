@@ -31,9 +31,15 @@ WebServer server(80);
 HTTPUpdateServer httpUpdater;
 String enrollID;
 IotWebConf iotWebConf(thingName, &dnsServer, &server, wifiInitialApPassword, CONFIG_VERSION);
-SoftwareSerial swSer(D1, D2, false, 128);
+SoftwareSerial swSer(D1, D2);
 String rs232input1;
 String Website, data, Javascript;
+
+
+void setWifiConnectionTimeoutMs(){
+  if (WiFi.status() != WL_CONNECTED)
+ Serial.println("Wifi Disconnect"); 
+}
 
 void javascriptContent()
 {
@@ -69,6 +75,11 @@ void handle_NotFound()
 }
 void WebsiteContent()
 {
+if (data == "")
+{
+  Serial.println("Unable to contact the scale");
+  data = "Unable to contact the scale";
+}
 
   server.sendHeader("access-control-allow-origin", "*");
   server.send(200, "text/html", data);
@@ -93,6 +104,7 @@ void setup()
 {
   Serial.begin(115200);
   swSer.begin(9600);
+
 
   iotWebConf.setStatusPin(STATUS_PIN);
   iotWebConf.setConfigPin(CONFIG_PIN);
@@ -132,7 +144,7 @@ void loop()
     DynamicJsonDocument root(100);
     root["scale"] = String(rs232input1);
     serializeJson(root, data);
-    // Serial.println(rs232input1);
+    Serial.println(data);
   }
 
   // Serial.println(JsonDatascale);
