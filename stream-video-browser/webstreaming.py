@@ -34,7 +34,7 @@ def index():
 	# return the rendered template
 	return render_template("index.html")
 def generate1():
-	cv2.imwrite('/home/pupan/Documents/'+str(datetime.datetime.now())+'.png', outputFrame)
+	cv2.imwrite('/home/pupan/Documents/Savecamera/'+str(datetime.datetime.now())+'.png', outputFrame)
 @app.route("/cap")
 def capture():
 	# return the response generated along with the specific media
