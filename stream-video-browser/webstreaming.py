@@ -13,7 +13,35 @@ import datetime
 import imutils
 import time
 import cv2
+import os
 import datetime
+from pathlib import Path
+import arrow
+
+# filesPath = r"/home/pupan/Documents/Savecamera"
+
+# criticalTime = arrow.now().shift(hours=+7).shift(days=-1)
+
+# for item in Path(filesPath).glob('*'):
+#     if item.is_file():
+#         print (str(item.absolute()))
+#         itemTime = arrow.get(item.stat().st_mtime)
+# 			# if itemTime < criticalTime:
+# 			# 	#remove it
+# 			# pass
+
+
+
+
+# for filename in os.listdir(path):
+#     print(filen ame)
+#     # if os.stat(os.path.join(path, filename)).st_mtime < now - 7 * 86400:
+#     if os.path.getmtime(os.path.join(path, filename)) < now - 7 * 86400:
+#         if os.path.isfile(os.path.join(path, filename)):
+#             #print(filename)
+#             os.remove(os.path.join(path, filename))
+
+
 # initialize the output frame and a lock used to ensure thread-safe
 # exchanges of the output frames (useful for multiple browsers/tabs
 # are viewing tthe stream)
@@ -28,6 +56,28 @@ app = Flask(__name__)
 #vs = VideoStream(usePiCamera=1).start()
 vs = VideoStream(src=0).start()
 time.sleep(2.0)
+
+
+
+
+def delete1():
+    	
+		path = r"/home/pupan/Documents/Savecamera"
+		now = time.time()
+		items = os.listdir("/home/pupan/Documents/Savecamera/")
+		newlist = []
+		for names in items:
+    			if names.endswith(".png"):
+    					os.remove(path+'/'+names)
+
+
+
+@app.route("/del")
+def delete():
+	# return the response generated along with the specific media
+	# type (mime type)
+	return Response(delete1(),
+		mimetype = "multipart/x-mixed-replace; boundary=frame")
 
 @app.route("/camera")
 def index():
