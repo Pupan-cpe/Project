@@ -629,19 +629,19 @@ void read1()
     cnt++;
 
     FingerID = getFingerprintIDez();
-    Serial.println("Scan NOW");
+    Serial.println("Scan Now");
     Serial.println(cnt);
     u8g2.clearBuffer();                 // clear the internal memory
     u8g2.setFont(u8g2_font_ncenB08_tr); // choose a suitable font
-    u8g2.drawStr(30, 30, "Scan NOW");   // write something to the internal memory
+    u8g2.drawStr(30, 30, "Scan Now");   // write something to the internal memory
     u8g2.sendBuffer();
     u8g2.clearBuffer();                 // clear the internal memory
     u8g2.setFont(u8g2_font_ncenB08_tr); // choose a suitable font
-    u8g2.drawStr(30, 30, "Scan NOW.");  // write something to the internal memory
+    u8g2.drawStr(30, 30, "Scan Now.");  // write something to the internal memory
     u8g2.sendBuffer();
     u8g2.clearBuffer();                  // clear the internal memory
     u8g2.setFont(u8g2_font_ncenB08_tr);  // choose a suitable font
-    u8g2.drawStr(30, 30, "Scan NOW..."); // write something to the internal memory
+    u8g2.drawStr(30, 30, "Scan Now..."); // write something to the internal memory
     u8g2.sendBuffer();                   // transfer internal memory to the display
 
     if (cnt == 30)
@@ -697,7 +697,9 @@ void read1()
     server.send(200, "text/html", String(sendID));
     u8g2.clearBuffer();                 // clear the internal memory
     u8g2.setFont(u8g2_font_ncenB08_tr); // choose a suitable font  
-    u8g2.drawStr(60, 30, String(FingerID).c_str());         // write something to the internal memory
+    u8g2.drawStr(50, 30, "OK !");           // write something to the internal memory
+    
+    //u8g2.drawStr(60, 30, String(FingerID).c_str());         // write something to the internal memory
     u8g2.sendBuffer();
     delay(2000);
 
@@ -844,7 +846,6 @@ void handleRoot()
   DynamicJsonDocument root(100);
 
   root["id"] = String(status2);
-
   serializeJson(root, status);
   server.send(200, "text/html", status);
 }
