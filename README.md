@@ -6,28 +6,13 @@
 
 <h1>การออกแบบและพัฒนาระบบการจัดการโรงงานขยะรีไซเคิลด้วย internet of thing</h1>
 <h2>Design and development factory of recycling management through the internet of thing<h2>
-<p1>Pupan Poulkaew 593030710044
- ComputerEngineering Faculty of Engineering NPU
-Pupan Poulkaew 593030710044
- ComputerEngineering Faculty of Engineering NPU
+<p1>ภูพาน ผลแก้ว 2563: การออกแบบและพัฒนาระบบการจัดการโรงงานขยะรีไซเคิลด้วย internet of thing 
+ปริญญาวิศวกรรมศาสตร์บัณฑิต (วิศวกรรมคอมพิวเตอร์) สาขาวิชาวิศวกรรมคอมพิวเตอร์ มหาวิทยาลัยนครพนม 
+ <p2> อาจารย์ที่ปรึกษาหลัก: ผู้ช่วยศาสตราจารย์ ดร. คมกฤษณ์ ชูเรือง <2p2>
+  <p3> อาจารย์ที่ปรึกษาร่วม:  อาจารย์กฤชณัท รวมบุญ </p3>
+
 </p1>
- <style>
-table {
-  font-family: arial, sans-serif;
-  border-collapse: collapse;
-  width: 100%;
-}
-
-td, th {
-  border: 1px solid #dddddd;
-  text-align: left;
-  padding: 8px;
-}
-
-tr:nth-child(even) {
-  background-color: #dddddd;
-}
-</style>
+ 
 </head>
 <body>
 
