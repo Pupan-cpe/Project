@@ -31,13 +31,31 @@
     <th>ลำดับ</th>
     <th>กิจกรรม</th>
     <th>ระยะเวลา</th>
-   <td><ระยะเวลา</td>
+   <th><th>
+   <th><th>
+   <th><th>
+   <th><th>
+   <th><th>
+   <th><th>
+   <th><th>
+   <th><th>
+   <th><th>
+   <th><th>
+   <th><th>
+   <th><th>
   </tr>
   
   <tr>
     <td>1</td>
     <td>เก็บรวมรวมข้อมูล</td>
-    <td>Italy</td>
+    <td>=</td>
+ <td>=</td>
+ <td>=</td>
+ <td>=</td>
+ <td>=</td>
+ <td>=</td>
+ <td>=</td>
+ <td>=></td>
   </tr>
 </table>
 
