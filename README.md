@@ -6,6 +6,22 @@
 
 <h1>การออกแบบและพัฒนาระบบการจัดการโรงงานขยะรีไซเคิลด้วย internet of thing
  <hr> </h1>
+ 
+ <h2> I design and develop a recycling waste management system by developing 3 parts.
+Part 1: Hardware
+Part 2: Software
+Section 3: Web
+Part 1 consists of
+1. Make the scale connect to the internet by using the Esp8266 microcontroller to connect with the scale via RS232 port.
+When receiving the data, it is stored on the Json web server in order to import the data. That will be displayed on the website
+2. Online fingerprint scanner. It will be used as proof of identity of recyclable waste vendors using the R307 and Esp8266 microcontroller modules to work by displaying the Json form on the web server.
+
+3. Online cameras
+It is used to save license plates to prevent illegal purchases by using a Raspberry PI to work as a web server so that the web application can control the work the images that are obtained after the shooting is stored. In the database
+
+Part 2 is the webapplication section.
+backend php & front-end using Bootstrap framework
+Used to communicate with all created devices.</h2>
 <p1> <b> ภูพาน ผลแก้ว 2563:</b> การออกแบบและพัฒนาระบบการจัดการโรงงานขยะรีไซเคิลด้วย internet of thing 
 <br> ปริญญาวิศวกรรมศาสตร์บัณฑิต (วิศวกรรมคอมพิวเตอร์) สาขาวิชาวิศวกรรมคอมพิวเตอร์ มหาวิทยาลัยนครพนม 
   <br> <p2> <b> อาจารย์ที่ปรึกษาหลัก:  ผู้ช่วยศาสตราจารย์ ดร. คมกฤษณ์ ชูเรือง </b> </p2>
