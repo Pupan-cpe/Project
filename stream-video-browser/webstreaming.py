@@ -18,6 +18,7 @@ import datetime
 from pathlib import Path
 import arrow
 from flask_cors import CORS
+import base64
 # filesPath = r"/var/www/html/image/"
 
 # criticalTime = arrow.now().shift(hours=+7).shift(days=-1)
@@ -109,7 +110,16 @@ def capture():
     # type (mime type)
     date1= str(datetime.datetime.now())
     cv2.imwrite('/var/www/html/image/'+str(date1)+'.png', outputFrame)
-    return str(date1)
+    with open('/var/www/html/image/'+str(date1)+'.png', 'rb') as binary_file:
+    	binary_file_data = binary_file.read()
+    base64_encoded_data = base64.b64encode(binary_file_data)
+    base64_message = base64_encoded_data.decode('utf-8')
+    print(base64_message)
+    #with open('/var/www/html/image/'+str(date1)+'.png', "rb") as img_file:
+        #my_string = base64.b64encode(img_file.read())
+        #print(my_string)
+    return str(base64_message)
+    
        #mimetype = "multipart/x-mixed-replace; boundary=frame")
 
 def detect_motion(frameCount):
