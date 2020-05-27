@@ -1,0 +1,173 @@
+
+
+/*****************************************************************************************
+  #Design and development factory of recycling management through the internet of thing
+
+  #ComputerEngineering Faculty OF Engineering NakhonPhanomUniversity 
+  
+  #Pupan Phonkaew 
+ *****************************************************************************************/
+#include <Arduino.h>
+#include <WiFi.h>
+#include <WiFiClient.h>
+#include <WebServer.h>
+#include <ESPmDNS.h>
+#include <ArduinoJson.h>
+#include <IotWebConf.h>
+
+WebServer server(80);
+
+#define RXD2 16
+#define TXD2 17
+String rs232input1;
+String output;
+const int led = 13;
+String data;
+
+const char thingName[] = "Scale01";
+
+// -- Initial password to connect to the Thing, when it creates an own Access Point.
+const char wifiInitialApPassword[] = "12345678";
+
+// -- Configuration specific key. The value should be modified if config structure was changed.
+#define CONFIG_VERSION "dem1"
+
+// -- When CONFIG_PIN is pulled to ground on startup, the Thing will use the initial
+//      password to buld an AP. (E.g. in case of lost password)
+#define CONFIG_PIN 2
+
+// -- Status indicator pin.
+//      First it will light up (kept LOW), on Wifi connection it will blink,
+//      when connected to the Wifi it will turn off (kept HIGH).
+#define STATUS_PIN LED_BUILTIN
+
+DNSServer dnsServer;
+
+HTTPUpdateServer httpUpdater;
+
+IotWebConf iotWebConf(thingName, &dnsServer, &server, wifiInitialApPassword, CONFIG_VERSION);
+
+void handleRoot()
+{
+  // -- Let IotWebConf test and handle captive portal requests.
+  if (iotWebConf.handleCaptivePortal())
+  {
+    // -- Captive portal request were already served.
+    return;
+  }
+  String s = "<!DOCTYPE html><html lang=\"en\"><head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1, user-scalable=no\"/>";
+  s += "<title>IotWebConf 04 Update Server</title></head><body>Hello world!";
+  s += "Go to <a href='config'>configure page</a> to change values.";
+  s += "</body></html>\n";
+
+  server.send(200, "text/html", s);
+}
+
+void handleNotFound()
+{
+  digitalWrite(led, 1);
+  String message = "File Not Found\n\n";
+  message += "URI: ";
+  message += server.uri();
+  message += "\nMethod: ";
+  message += (server.method() == HTTP_GET) ? "GET" : "POST";
+  message += "\nArguments: ";
+  message += server.args();
+  message += "\n";
+  for (uint8_t i = 0; i < server.args(); i++)
+  {
+    message += " " + server.argName(i) + ": " + server.arg(i) + "\n";
+  }
+  server.send(404, "text/plain", message);
+  digitalWrite(led, 0);
+}
+
+void WebsiteContent()
+{
+
+  server.sendHeader("access-control-allow-origin", "*");
+  server.send(200, "text/html", output);
+}
+
+//void WebsiteContent()
+//{
+//
+//
+//
+//
+//  server.sendHeader("access-control-allow-origin", "*");
+//  server.send(200, "text/html", data);
+//}
+
+void setup(void)
+{
+  Serial2.begin(9600, SERIAL_8N1, RXD2, TXD2);
+  Serial.println("Serial Txd is on pin: " + String(TX));
+  Serial.println("Serial Rxd is on pin: " + String(RX));
+  pinMode(led, OUTPUT);
+  digitalWrite(led, 0);
+  Serial.begin(115200);
+  // WiFi.mode(WIFI_STA);
+  // WiFi.begin(ssid, password);
+  // Serial.println("");
+
+  // // Wait for connection
+  // while (WiFi.status() != WL_CONNECTED) {
+  //   delay(500);
+  //   Serial.print(".");
+  // }
+  // Serial.println("");
+  // Serial.print("Connected to ");
+  // Serial.println(ssid);
+  // Serial.print("IP address: ");
+  // Serial.println(WiFi.localIP());
+
+  if (MDNS.begin("esp32"))
+  {
+    Serial.println("MDNS responder started");
+  }
+
+  iotWebConf.setStatusPin(STATUS_PIN);
+  iotWebConf.setConfigPin(CONFIG_PIN);
+  iotWebConf.setupUpdateServer(&httpUpdater);
+  iotWebConf.getApTimeoutParameter()->visible = true;
+  // -- Initializing the configuration.
+  iotWebConf.init();
+
+  // -- Set up required URL handlers on the web server.
+  server.on("/", handleRoot);
+  server.on("/getscale", WebsiteContent);
+  server.on("/config", [] { iotWebConf.handleConfig(); });
+  server.onNotFound([]() { iotWebConf.handleNotFound(); });
+
+  Serial.println("Ready.");
+
+  server.onNotFound(handleNotFound);
+
+  //server.begin();
+  Serial.println("HTTP server started");
+}
+
+void loop(void)
+{
+  iotWebConf.doLoop();
+  data = "";
+
+  server.handleClient();
+
+  if (Serial2.available() > 0)
+  {
+    //Serial.print(char(Serial2.read()));
+    rs232input1 = Serial2.readStringUntil('\n');
+    // Serial.println(rs232input1);
+    int strindex = rs232input1.indexOf('=');
+    int endindex = rs232input1.indexOf('(');
+    rs232input1 = rs232input1.substring(strindex + 1, endindex);
+    //    Serial.println(rs232input1);
+    DynamicJsonDocument root(100);
+    root["scale"] = String(rs232input1);
+    serializeJson(root, data);
+    output = data;
+    // Serial.println(data);
+  }
+}
